@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Payments.Domain</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Persistence\BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Exceptions\BuildingBlocks.Exceptions.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Payments.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Polly.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Payments.Domain\Payments.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Persistence\BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Exceptions\BuildingBlocks.Exceptions.csproj" />
+  </ItemGroup>
+</Project>

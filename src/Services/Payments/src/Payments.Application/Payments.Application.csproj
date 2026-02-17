@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Payments.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MassTransit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Payments.Domain\Payments.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Contracts\BuildingBlocks.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Messaging\BuildingBlocks.Messaging.csproj" />
+  </ItemGroup>
+</Project>
