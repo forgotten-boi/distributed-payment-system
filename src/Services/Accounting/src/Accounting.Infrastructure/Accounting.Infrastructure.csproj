@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Accounting.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Accounting.Domain\Accounting.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Persistence\BuildingBlocks.Persistence.csproj" />
+  </ItemGroup>
+</Project>

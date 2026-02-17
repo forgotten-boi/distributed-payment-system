@@ -17,6 +17,13 @@
     <Project Path="src/BuildingBlocks/Persistence/BuildingBlocks.Persistence.csproj" />
   </Folder>
   <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Accounting/" />
+  <Folder Name="/src/Services/Accounting/src/">
+    <Project Path="src/Services/Accounting/src/Accounting.Api/Accounting.Api.csproj" />
+    <Project Path="src/Services/Accounting/src/Accounting.Application/Accounting.Application.csproj" />
+    <Project Path="src/Services/Accounting/src/Accounting.Domain/Accounting.Domain.csproj" />
+    <Project Path="src/Services/Accounting/src/Accounting.Infrastructure/Accounting.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Orders/" />
   <Folder Name="/src/Services/Orders/src/">
     <Project Path="src/Services/Orders/src/Orders.Api/Orders.Api.csproj" />
