@@ -1,5 +1,7 @@
 <Solution>
-  <Folder Name="/src/" />
+  <Folder Name="/src/">
+    <Project Path="src/AppHost/AppHost.csproj" />
+  </Folder>
   <Folder Name="/src/BuildingBlocks/" />
   <Folder Name="/src/BuildingBlocks/Contracts/">
     <Project Path="src/BuildingBlocks/Contracts/BuildingBlocks.Contracts.csproj" />
