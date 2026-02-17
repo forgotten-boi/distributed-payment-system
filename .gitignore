@@ -1,0 +1,57 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+
+## Visual Studio
+.vs/
+*.rsuser
+*.sln.docstates
+launchSettings.json
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## User secrets
+secrets.json
+
+## macOS
+.DS_Store
+
+## Generated documentation (PDFs kept out of repo)
+docs-generated/
+*.pdf
+
+## Aspire
+.aspire/
+
+## Misc
+*.swp
+*.bak
+*.tmp
+*~
+Thumbs.db
