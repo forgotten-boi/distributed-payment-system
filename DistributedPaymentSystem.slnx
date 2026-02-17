@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/" />
+  <Folder Name="/src/BuildingBlocks/Contracts/">
+    <Project Path="src/BuildingBlocks/Contracts/BuildingBlocks.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Exceptions/">
+    <Project Path="src/BuildingBlocks/Exceptions/BuildingBlocks.Exceptions.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Messaging/">
+    <Project Path="src/BuildingBlocks/Messaging/BuildingBlocks.Messaging.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Observability/">
+    <Project Path="src/BuildingBlocks/Observability/BuildingBlocks.Observability.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Persistence/">
+    <Project Path="src/BuildingBlocks/Persistence/BuildingBlocks.Persistence.csproj" />
+  </Folder>
+</Solution>

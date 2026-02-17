@@ -1,0 +1,52 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- ASP.NET Core -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-preview.1.25120.3" />
+
+    <!-- Aspire -->
+    <PackageVersion Include="Aspire.Hosting" Version="9.2.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.2.0" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.2.0" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.2.0" />
+    <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.2.0" />
+    <PackageVersion Include="Aspire.RabbitMQ.Client" Version="9.2.0" />
+
+    <!-- Entity Framework Core -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.0-preview.1.25081.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0-preview.1.25081.3" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.0-preview.1.25081.3" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0-preview.1" />
+
+    <!-- Messaging -->
+    <PackageVersion Include="MassTransit" Version="8.4.0" />
+    <PackageVersion Include="MassTransit.RabbitMQ" Version="8.4.0" />
+    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.4.0" />
+
+    <!-- Observability -->
+    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.11.2" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.11.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.11.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.11.2" />
+
+    <!-- Resilience -->
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.4.0" />
+    <PackageVersion Include="Polly.Core" Version="8.5.2" />
+
+    <!-- Serialization -->
+    <PackageVersion Include="System.Text.Json" Version="10.0.0-preview.1.25080.5" />
+
+    <!-- MediatR -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+
+    <!-- Service Defaults -->
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="9.2.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.11.2" />
+  </ItemGroup>
+</Project>

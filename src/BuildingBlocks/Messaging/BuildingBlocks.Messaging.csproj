@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>BuildingBlocks.Messaging</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Persistence\BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+</Project>
