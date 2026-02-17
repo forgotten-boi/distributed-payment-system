@@ -5,6 +5,5 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
-    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 </Project>

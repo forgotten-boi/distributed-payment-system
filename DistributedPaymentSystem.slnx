@@ -16,4 +16,12 @@
   <Folder Name="/src/BuildingBlocks/Persistence/">
     <Project Path="src/BuildingBlocks/Persistence/BuildingBlocks.Persistence.csproj" />
   </Folder>
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Orders/" />
+  <Folder Name="/src/Services/Orders/src/">
+    <Project Path="src/Services/Orders/src/Orders.Api/Orders.Api.csproj" />
+    <Project Path="src/Services/Orders/src/Orders.Application/Orders.Application.csproj" />
+    <Project Path="src/Services/Orders/src/Orders.Domain/Orders.Domain.csproj" />
+    <Project Path="src/Services/Orders/src/Orders.Infrastructure/Orders.Infrastructure.csproj" />
+  </Folder>
 </Solution>

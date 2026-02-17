@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Orders.Application</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orders.Domain\Orders.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Contracts\BuildingBlocks.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Messaging\BuildingBlocks.Messaging.csproj" />
+  </ItemGroup>
+</Project>
