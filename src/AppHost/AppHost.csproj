@@ -14,5 +14,6 @@
     <ProjectReference Include="..\Services\Orders\src\Orders.Api\Orders.Api.csproj" />
     <ProjectReference Include="..\Services\Payments\src\Payments.Api\Payments.Api.csproj" />
     <ProjectReference Include="..\Services\Accounting\src\Accounting.Api\Accounting.Api.csproj" />
+    <ProjectReference Include="..\WebUI\WebUI.csproj" />
   </ItemGroup>
 </Project>

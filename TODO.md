@@ -148,6 +148,40 @@
 - [x] Generate API reference PDF (kept OUT of git repo)
 - [x] Add .gitignore rule for /docs-generated/ folder
 
+## Phase 8: Create a UI app to test it
+
+### 8.1 Blazor Server UI Project
+- [x] Create WebUI Blazor Server project (src/WebUI)
+- [x] Configure Aspire service discovery for HTTP clients (orders-api, payments-api, accounting-api)
+- [x] Create PaymentPlatformClient service (typed HTTP client for all backend APIs)
+- [x] Create OrderTracker service (in-memory session state for created orders)
+
+### 8.2 Dashboard Page
+- [x] Stats grid: total orders, captured, authorized, failed, captured volume
+- [x] Payment lifecycle flow visualization
+- [x] Recent orders table with links
+
+### 8.3 Order Management Pages
+- [x] Orders list page with status badges, refresh, confirm/cancel actions
+- [x] Create Order form with amount, currency, customer ID fields
+- [x] Simulated failure tips (amounts ending in .99 declined, >10k timeout)
+- [x] Order Details page with payment info, ledger entries, action buttons
+
+### 8.4 Accounting & Ledger Page
+- [x] Account balance cards (CustomerReceivable debits, Revenue credits)
+- [x] Run Reconciliation button with balanced/imbalanced result display
+- [x] Ledger entry lookup by Transaction/Payment ID
+
+### 8.5 Full Lifecycle Demo Page
+- [x] Automated 6-step flow: Create → Authorize → Confirm → Capture → Verify Ledger → Reconcile
+- [x] Real-time step progress with active/completed/failed states
+- [x] Configurable amount for testing happy path vs failure scenarios
+
+### 8.6 AppHost Integration
+- [x] Add WebUI project reference to AppHost
+- [x] Wire service discovery (WithReference to all 3 services)
+- [x] Add to solution file
+
 ---
 
 ## Commit Strategy

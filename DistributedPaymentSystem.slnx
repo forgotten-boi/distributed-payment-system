@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/AppHost/AppHost.csproj" />
     <Project Path="src/Client/Client.csproj" />
+    <Project Path="src/WebUI/WebUI.csproj" />
   </Folder>
   <Folder Name="/src/BuildingBlocks/" />
   <Folder Name="/src/BuildingBlocks/Contracts/">

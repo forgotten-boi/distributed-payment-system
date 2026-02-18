@@ -1,0 +1,245 @@
+@page "/lifecycle"
+@inject PaymentPlatformClient Client
+@inject OrderTracker Tracker
+
+<div class="page-header">
+    <h1>🔄 Full Lifecycle Demo</h1>
+    <p>Automated end-to-end test: Create Order → Authorize → Capture → Verify Ledger</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Configuration</h3>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Amount</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" @bind="_amount" disabled="@_running" />
+        </div>
+        <div class="form-group">
+            <label>Currency</label>
+            <select class="form-control" @bind="_currency" disabled="@_running">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+            </select>
+        </div>
+    </div>
+    <div class="alert alert-info">
+        <strong>💡 Tip:</strong> Use <code>$250.00</code> for happy path.
+        Use <code>$99.99</code> to test declined payment.
+        Use <code>$15000.00</code> to test timeout.
+    </div>
+    <button class="btn btn-primary" @onclick="RunLifecycle" disabled="@_running">
+        @if (_running) { <span class="spinner"></span> } else { <span>🚀</span> }
+        Run Full Lifecycle
+    </button>
+</div>
+
+<div class="lifecycle-steps">
+    @foreach (var step in _steps)
+    {
+        <div class="step @step.CssClass">
+            <div class="step-number">@step.Number</div>
+            <div class="step-content">
+                <h4>@step.Title</h4>
+                <p>@step.Description</p>
+                @if (step.Detail is not null)
+                {
+                    <p class="mono" style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--accent-cyan);">@step.Detail</p>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (_reconciliation is not null)
+{
+    <div class="card mt-3">
+        <div class="card-header">
+            <h3>Final Reconciliation</h3>
+            <span class="badge @(_reconciliation.IsBalanced ? "badge-captured" : "badge-failed")">
+                @(_reconciliation.IsBalanced ? "BALANCED ✓" : "IMBALANCED ✗")
+            </span>
+        </div>
+        <dl class="detail-grid">
+            <dt>Total Debits</dt><dd>@_reconciliation.TotalDebits.ToString("C")</dd>
+            <dt>Total Credits</dt><dd>@_reconciliation.TotalCredits.ToString("C")</dd>
+            <dt>Difference</dt><dd>@_reconciliation.Difference.ToString("C")</dd>
+        </dl>
+    </div>
+}
+
+@code {
+    private decimal _amount = 250.00m;
+    private string _currency = "USD";
+    private bool _running;
+    private ReconciliationResult? _reconciliation;
+    private readonly List<StepInfo> _steps = [];
+
+    private sealed class StepInfo
+    {
+        public int Number { get; init; }
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string? Detail { get; set; }
+        public string CssClass { get; set; } = "";
+    }
+
+    private async Task RunLifecycle()
+    {
+        _running = true;
+        _reconciliation = null;
+        _steps.Clear();
+        StateHasChanged();
+
+        var correlationId = Guid.NewGuid().ToString();
+        Guid? orderId = null;
+
+        try
+        {
+            // ── Step 1: Create Order ──
+            var step1 = AddStep(1, "Create Order", "Sending POST /api/orders…");
+            StateHasChanged();
+
+            var idempotencyKey = Guid.NewGuid().ToString();
+            var request = new CreateOrderRequest(Guid.NewGuid(), _amount, _currency, idempotencyKey);
+            var result = await Client.CreateOrderAsync(request);
+            orderId = result!.OrderId;
+
+            Tracker.Track(new TrackedOrder
+            {
+                OrderId = orderId.Value,
+                CustomerId = request.CustomerId,
+                Amount = _amount,
+                Currency = _currency,
+                Status = result.Status,
+                IdempotencyKey = idempotencyKey
+            });
+
+            step1.CssClass = "completed";
+            step1.Detail = $"Order {orderId} → Status: {result.Status}";
+            StateHasChanged();
+
+            // ── Step 2: Wait for Authorization ──
+            var step2 = AddStep(2, "Wait for Authorization", "Polling order status (async via RabbitMQ)…");
+            step2.CssClass = "active";
+            StateHasChanged();
+
+            var authorized = false;
+            for (var i = 0; i < 30; i++)
+            {
+                await Task.Delay(1000);
+                var order = await Client.GetOrderAsync(orderId.Value);
+                step2.Description = $"Polling… attempt {i + 1}/30 — Status: {order?.Status}";
+                StateHasChanged();
+
+                if (order?.Status == "Authorized")
+                {
+                    step2.CssClass = "completed";
+                    step2.Detail = $"PaymentId: {order.PaymentId}";
+                    Tracker.Update(orderId.Value, o => { o.Status = "Authorized"; o.PaymentId = order.PaymentId; });
+                    authorized = true;
+                    break;
+                }
+
+                if (order?.Status == "Failed")
+                {
+                    step2.CssClass = "failed";
+                    step2.Detail = $"Failure: {order.FailureReason}";
+                    Tracker.Update(orderId.Value, o => { o.Status = "Failed"; o.FailureReason = order.FailureReason; });
+                    return;
+                }
+            }
+
+            if (!authorized)
+            {
+                step2.CssClass = "failed";
+                step2.Description = "Authorization did not complete in 30 seconds.";
+                return;
+            }
+
+            // ── Step 3: Confirm Order (Capture) ──
+            var step3 = AddStep(3, "Confirm Order → Capture", "Sending POST /api/orders/{id}/confirm…");
+            step3.CssClass = "active";
+            StateHasChanged();
+
+            await Client.ConfirmOrderAsync(orderId.Value);
+            step3.CssClass = "completed";
+            step3.Detail = "Capture command sent via RabbitMQ";
+            Tracker.Update(orderId.Value, o => o.Status = "Capturing");
+            StateHasChanged();
+
+            // ── Step 4: Wait for Capture ──
+            var step4 = AddStep(4, "Wait for Capture", "Polling…");
+            step4.CssClass = "active";
+            StateHasChanged();
+
+            for (var i = 0; i < 30; i++)
+            {
+                await Task.Delay(1000);
+                var order = await Client.GetOrderAsync(orderId.Value);
+                step4.Description = $"Polling… attempt {i + 1}/30 — Status: {order?.Status}";
+                StateHasChanged();
+
+                if (order?.Status == "Captured")
+                {
+                    step4.CssClass = "completed";
+                    step4.Detail = "Payment captured. Funds transferred.";
+                    Tracker.Update(orderId.Value, o => o.Status = "Captured");
+                    break;
+                }
+
+                if (order?.Status == "Failed")
+                {
+                    step4.CssClass = "failed";
+                    step4.Detail = $"Capture failed: {order.FailureReason}";
+                    Tracker.Update(orderId.Value, o => { o.Status = "Failed"; o.FailureReason = order.FailureReason; });
+                    return;
+                }
+            }
+
+            // ── Step 5: Verify Accounting ──
+            var step5 = AddStep(5, "Verify Accounting Ledger", "Waiting for eventual consistency (3s)…");
+            step5.CssClass = "active";
+            StateHasChanged();
+
+            await Task.Delay(3000);
+
+            var receivable = await Client.GetAccountBalanceAsync("CustomerReceivable");
+            var revenue = await Client.GetAccountBalanceAsync("Revenue");
+
+            step5.CssClass = "completed";
+            step5.Detail = $"Receivable Debits: {receivable?.TotalDebits:C} | Revenue Credits: {revenue?.TotalCredits:C}";
+            StateHasChanged();
+
+            // ── Step 6: Reconciliation ──
+            var step6 = AddStep(6, "Run Reconciliation", "Verifying double-entry integrity…");
+            step6.CssClass = "active";
+            StateHasChanged();
+
+            _reconciliation = await Client.RunReconciliationAsync();
+            step6.CssClass = _reconciliation?.IsBalanced == true ? "completed" : "failed";
+            step6.Detail = _reconciliation?.IsBalanced == true
+                ? "✓ All debits equal all credits. Financial integrity verified."
+                : "✗ Imbalance detected!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            AddStep(_steps.Count + 1, "Error", ex.Message).CssClass = "failed";
+        }
+        finally
+        {
+            _running = false;
+            StateHasChanged();
+        }
+    }
+
+    private StepInfo AddStep(int number, string title, string description)
+    {
+        var step = new StepInfo { Number = number, Title = title, Description = description };
+        _steps.Add(step);
+        return step;
+    }
+}

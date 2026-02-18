@@ -45,6 +45,7 @@ secrets.json
 ## Generated documentation (PDFs kept out of repo)
 docs-generated/
 *.pdf
+tools/PdfGenerator/
 
 ## Aspire
 .aspire/

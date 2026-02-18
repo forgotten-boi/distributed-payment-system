@@ -1,0 +1,20 @@
+@inherits LayoutComponentBase
+
+<div class="layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <span class="logo">💳</span>
+            <h2>Payment Platform</h2>
+        </div>
+        <ul class="nav-links">
+            <li><a href="/" class="nav-link">📊 Dashboard</a></li>
+            <li><a href="/orders" class="nav-link">📦 Orders</a></li>
+            <li><a href="/orders/create" class="nav-link">➕ New Order</a></li>
+            <li><a href="/accounting" class="nav-link">📒 Accounting</a></li>
+            <li><a href="/lifecycle" class="nav-link">🔄 Full Lifecycle</a></li>
+        </ul>
+    </nav>
+    <main class="main-content">
+        @Body
+    </main>
+</div>

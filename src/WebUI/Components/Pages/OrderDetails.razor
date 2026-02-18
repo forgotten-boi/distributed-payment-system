@@ -1,0 +1,240 @@
+@page "/orders/{OrderId:guid}"
+@inject PaymentPlatformClient Client
+@inject OrderTracker Tracker
+
+<div class="page-header">
+    <h1>📦 Order Details</h1>
+    <p>View order status and associated payment information</p>
+</div>
+
+@if (_loading)
+{
+    <div class="card"><span class="spinner"></span> Loading order…</div>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_order is not null)
+{
+    <div class="card">
+        <div class="card-header">
+            <h3>Order Information</h3>
+            <span class="badge badge-@_order.Status.ToLowerInvariant()">@_order.Status</span>
+        </div>
+        <dl class="detail-grid">
+            <dt>Order ID</dt>
+            <dd class="mono">@_order.Id</dd>
+            <dt>Customer ID</dt>
+            <dd class="mono">@_order.CustomerId</dd>
+            <dt>Amount</dt>
+            <dd>@_order.Amount.ToString("C") @_order.Currency</dd>
+            <dt>Status</dt>
+            <dd>@_order.Status</dd>
+            <dt>Payment ID</dt>
+            <dd class="mono">@(_order.PaymentId?.ToString() ?? "Not yet assigned")</dd>
+            @if (_order.FailureReason is not null)
+            {
+                <dt>Failure Reason</dt>
+                <dd style="color: var(--accent-red);">@_order.FailureReason</dd>
+            }
+        </dl>
+    </div>
+
+    <div class="actions mb-2">
+        <button class="btn btn-secondary btn-sm" @onclick="Refresh" disabled="@_refreshing">
+            @if (_refreshing) { <span class="spinner"></span> } 🔄 Refresh
+        </button>
+
+        @if (_order.Status == "Authorized")
+        {
+            <button class="btn btn-success btn-sm" @onclick="Confirm" disabled="@_acting">✓ Confirm (Capture)</button>
+            <button class="btn btn-danger btn-sm" @onclick="Cancel" disabled="@_acting">✗ Cancel</button>
+        }
+    </div>
+
+    @if (_order.PaymentId.HasValue)
+    {
+        <div class="card">
+            <div class="card-header">
+                <h3>Payment Details</h3>
+                <button class="btn btn-secondary btn-sm" @onclick="LoadPayment">Load Payment</button>
+            </div>
+
+            @if (_payment is not null)
+            {
+                <dl class="detail-grid">
+                    <dt>Payment ID</dt>
+                    <dd class="mono">@_payment.Id</dd>
+                    <dt>Status</dt>
+                    <dd><span class="badge badge-@_payment.Status.ToLowerInvariant()">@_payment.Status</span></dd>
+                    <dt>Provider Txn</dt>
+                    <dd class="mono">@(_payment.ProviderTransactionId ?? "N/A")</dd>
+                    <dt>Created</dt>
+                    <dd>@_payment.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                    @if (_payment.FailureReason is not null)
+                    {
+                        <dt>Failure</dt>
+                        <dd style="color: var(--accent-red);">@_payment.FailureReason</dd>
+                    }
+                </dl>
+            }
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Ledger Entries</h3>
+                <button class="btn btn-secondary btn-sm" @onclick="LoadLedger">Load Ledger</button>
+            </div>
+
+            @if (_ledgerEntries.Count > 0)
+            {
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Account</th>
+                            <th>Debit</th>
+                            <th>Credit</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in _ledgerEntries)
+                        {
+                            <tr>
+                                <td>@entry.AccountName</td>
+                                <td style="color: var(--accent-amber);">@(entry.DebitAmount > 0 ? entry.DebitAmount.ToString("C") : "—")</td>
+                                <td style="color: var(--accent-green);">@(entry.CreditAmount > 0 ? entry.CreditAmount.ToString("C") : "—")</td>
+                                <td class="text-secondary">@entry.Description</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="text-secondary" style="padding: 0.5rem;">No ledger entries yet. Entries appear after payment capture.</p>
+            }
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_actionMessage))
+    {
+        <div class="alert @_actionClass">@_actionMessage</div>
+    }
+}
+
+@code {
+    [Parameter] public Guid OrderId { get; set; }
+
+    private OrderDetail? _order;
+    private PaymentDetail? _payment;
+    private List<LedgerEntryDetail> _ledgerEntries = [];
+    private bool _loading = true;
+    private bool _refreshing;
+    private bool _acting;
+    private string? _error;
+    private string? _actionMessage;
+    private string _actionClass = "alert-info";
+
+    protected override async Task OnInitializedAsync() => await Refresh();
+
+    private async Task Refresh()
+    {
+        _refreshing = true;
+        StateHasChanged();
+
+        try
+        {
+            _order = await Client.GetOrderAsync(OrderId);
+            if (_order is null)
+            {
+                _error = "Order not found.";
+            }
+            else
+            {
+                Tracker.Update(OrderId, o =>
+                {
+                    o.Status = _order.Status;
+                    o.PaymentId = _order.PaymentId;
+                    o.FailureReason = _order.FailureReason;
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            _refreshing = false;
+        }
+    }
+
+    private async Task LoadPayment()
+    {
+        if (_order?.PaymentId is null) return;
+        try
+        {
+            _payment = await Client.GetPaymentAsync(_order.PaymentId.Value);
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = $"Failed to load payment: {ex.Message}";
+            _actionClass = "alert-danger";
+        }
+    }
+
+    private async Task LoadLedger()
+    {
+        if (_order?.PaymentId is null) return;
+        try
+        {
+            _ledgerEntries = await Client.GetLedgerEntriesAsync(_order.PaymentId.Value);
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = $"Failed to load ledger: {ex.Message}";
+            _actionClass = "alert-danger";
+        }
+    }
+
+    private async Task Confirm()
+    {
+        _acting = true;
+        try
+        {
+            await Client.ConfirmOrderAsync(OrderId);
+            _actionMessage = "Order confirmed! Capture in progress…";
+            _actionClass = "alert-success";
+            await Task.Delay(1500);
+            await Refresh();
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = $"Confirmation failed: {ex.Message}";
+            _actionClass = "alert-danger";
+        }
+        finally { _acting = false; }
+    }
+
+    private async Task Cancel()
+    {
+        _acting = true;
+        try
+        {
+            await Client.CancelOrderAsync(OrderId);
+            _actionMessage = "Order cancelled.";
+            _actionClass = "alert-info";
+            await Task.Delay(1000);
+            await Refresh();
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = $"Cancellation failed: {ex.Message}";
+            _actionClass = "alert-danger";
+        }
+        finally { _acting = false; }
+    }
+}

@@ -1,0 +1,145 @@
+@page "/orders"
+@inject OrderTracker Tracker
+@inject PaymentPlatformClient Client
+
+<div class="page-header">
+    <h1>📦 Orders</h1>
+    <p>All orders created during this session</p>
+</div>
+
+<div class="actions mb-2">
+    <a href="/orders/create" class="btn btn-primary">➕ New Order</a>
+    <button class="btn btn-secondary" @onclick="RefreshAll" disabled="@_refreshing">
+        @if (_refreshing) { <span class="spinner"></span> } else { <span>🔄</span> }
+        Refresh Statuses
+    </button>
+</div>
+
+@{
+    var orders = Tracker.GetAll();
+}
+
+@if (orders.Count == 0)
+{
+    <div class="alert alert-info">No orders yet. Create one to get started.</div>
+}
+else
+{
+    <div class="card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Payment ID</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in orders)
+                {
+                    <tr>
+                        <td>
+                            <a href="/orders/@order.OrderId" style="color: var(--accent-blue); text-decoration: none;">
+                                @order.OrderId.ToString()[..8]…
+                            </a>
+                        </td>
+                        <td class="mono text-secondary">@order.CustomerId.ToString()[..8]…</td>
+                        <td>@order.Amount.ToString("C") @order.Currency</td>
+                        <td><span class="badge badge-@order.Status.ToLowerInvariant()">@order.Status</span></td>
+                        <td class="mono text-secondary">@(order.PaymentId?.ToString()?[..8] ?? "—")@(order.PaymentId.HasValue ? "…" : "")</td>
+                        <td class="text-secondary">@order.CreatedAt.ToString("HH:mm:ss")</td>
+                        <td class="actions">
+                            @if (order.Status == "Authorized")
+                            {
+                                <button class="btn btn-success btn-sm" @onclick="() => ConfirmOrder(order.OrderId)">✓ Confirm</button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => CancelOrder(order.OrderId)">✗ Cancel</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert @_messageClass">@_message</div>
+}
+
+@code {
+    private bool _refreshing;
+    private string? _message;
+    private string _messageClass = "alert-info";
+
+    private async Task RefreshAll()
+    {
+        _refreshing = true;
+        StateHasChanged();
+
+        try
+        {
+            var orders = Tracker.GetAll();
+            foreach (var order in orders)
+            {
+                var detail = await Client.GetOrderAsync(order.OrderId);
+                if (detail is not null)
+                {
+                    Tracker.Update(order.OrderId, o =>
+                    {
+                        o.Status = detail.Status;
+                        o.PaymentId = detail.PaymentId;
+                        o.FailureReason = detail.FailureReason;
+                    });
+                }
+            }
+            _message = $"Refreshed {orders.Count} orders.";
+            _messageClass = "alert-success";
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error refreshing: {ex.Message}";
+            _messageClass = "alert-danger";
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    private async Task ConfirmOrder(Guid orderId)
+    {
+        try
+        {
+            await Client.ConfirmOrderAsync(orderId);
+            Tracker.Update(orderId, o => o.Status = "Capturing");
+            _message = "Order confirmation sent. Capture in progress…";
+            _messageClass = "alert-success";
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error confirming: {ex.Message}";
+            _messageClass = "alert-danger";
+        }
+    }
+
+    private async Task CancelOrder(Guid orderId)
+    {
+        try
+        {
+            await Client.CancelOrderAsync(orderId);
+            Tracker.Update(orderId, o => o.Status = "Cancelled");
+            _message = "Order cancelled.";
+            _messageClass = "alert-info";
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error cancelling: {ex.Message}";
+            _messageClass = "alert-danger";
+        }
+    }
+}

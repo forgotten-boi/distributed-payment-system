@@ -54,4 +54,17 @@ var accountingService = builder.AddProject<Projects.Accounting_Api>("accounting-
     .WaitFor(rabbitmq)
     .WithExternalHttpEndpoints();
 
+// Web UI — Blazor Server interactive dashboard for testing the payment lifecycle.
+// Uses Aspire service discovery to resolve service endpoints (orders-api, payments-api,
+// accounting-api) without hard-coding URLs. The UI communicates with all three services
+// via HTTP to create orders, check statuses, and view accounting entries.
+builder.AddProject<Projects.WebUI>("web-ui")
+    .WithReference(ordersService)
+    .WithReference(paymentsService)
+    .WithReference(accountingService)
+    .WaitFor(ordersService)
+    .WaitFor(paymentsService)
+    .WaitFor(accountingService)
+    .WithExternalHttpEndpoints();
+
 builder.Build().Run();

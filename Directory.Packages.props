@@ -48,5 +48,9 @@
     <!-- Service Defaults -->
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.3.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.11.2" />
+
+    <!-- Tools -->
+    <PackageVersion Include="PdfSharpCore" Version="1.3.65" />
+    <PackageVersion Include="Markdig" Version="0.40.0" />
   </ItemGroup>
 </Project>

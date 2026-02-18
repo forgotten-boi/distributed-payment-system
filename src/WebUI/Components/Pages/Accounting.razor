@@ -1,0 +1,198 @@
+@page "/accounting"
+@inject PaymentPlatformClient Client
+
+<div class="page-header">
+    <h1>📒 Accounting & Ledger</h1>
+    <p>Double-entry ledger — the financial source of truth. Every debit has a matching credit.</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card stat-amber">
+        <div class="stat-value">@(_receivable?.TotalDebits.ToString("C") ?? "—")</div>
+        <div class="stat-label">Customer Receivable (Debits)</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-value">@(_revenue?.TotalCredits.ToString("C") ?? "—")</div>
+        <div class="stat-label">Revenue (Credits)</div>
+    </div>
+    <div class="stat-card stat-blue">
+        <div class="stat-value">@(_receivable?.EntryCount.ToString() ?? "0")</div>
+        <div class="stat-label">Ledger Entries</div>
+    </div>
+</div>
+
+<div class="actions mb-2">
+    <button class="btn btn-primary" @onclick="LoadBalances" disabled="@_loading">
+        @if (_loading) { <span class="spinner"></span> }
+        🔄 Refresh Balances
+    </button>
+    <button class="btn btn-secondary" @onclick="RunReconciliation" disabled="@_reconciling">
+        @if (_reconciling) { <span class="spinner"></span> }
+        ⚖️ Run Reconciliation
+    </button>
+</div>
+
+@if (_reconciliation is not null)
+{
+    <div class="card">
+        <div class="card-header">
+            <h3>Reconciliation Result</h3>
+            <span class="badge @(_reconciliation.IsBalanced ? "badge-captured" : "badge-failed")">
+                @(_reconciliation.IsBalanced ? "BALANCED ✓" : "IMBALANCED ✗")
+            </span>
+        </div>
+        <dl class="detail-grid">
+            <dt>Total Debits</dt>
+            <dd>@_reconciliation.TotalDebits.ToString("C")</dd>
+            <dt>Total Credits</dt>
+            <dd>@_reconciliation.TotalCredits.ToString("C")</dd>
+            <dt>Difference</dt>
+            <dd style="color: @(_reconciliation.Difference == 0 ? "var(--accent-green)" : "var(--accent-red)")">
+                @_reconciliation.Difference.ToString("C")
+            </dd>
+            <dt>Entry Count</dt>
+            <dd>@_reconciliation.EntryCount</dd>
+        </dl>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">
+        <h3>Lookup Ledger by Transaction ID</h3>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label>Transaction / Payment ID</label>
+            <input class="form-control mono" @bind="_lookupId" placeholder="Enter GUID…" />
+        </div>
+        <div class="form-group" style="display:flex; align-items:flex-end;">
+            <button class="btn btn-primary" @onclick="LookupLedger" disabled="@_lookingUp">
+                @if (_lookingUp) { <span class="spinner"></span> }
+                🔍 Lookup
+            </button>
+        </div>
+    </div>
+
+    @if (_lookupEntries.Count > 0)
+    {
+        <table class="data-table mt-2">
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Currency</th>
+                    <th>Description</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in _lookupEntries)
+                {
+                    <tr>
+                        <td>@entry.AccountName</td>
+                        <td style="color: var(--accent-amber);">@(entry.DebitAmount > 0 ? entry.DebitAmount.ToString("C") : "—")</td>
+                        <td style="color: var(--accent-green);">@(entry.CreditAmount > 0 ? entry.CreditAmount.ToString("C") : "—")</td>
+                        <td>@entry.Currency</td>
+                        <td class="text-secondary">@entry.Description</td>
+                        <td class="text-secondary">@entry.CreatedAt.ToString("HH:mm:ss")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (_lookupDone)
+    {
+        <div class="alert alert-info mt-2">No ledger entries found for this ID.</div>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(_message))
+{
+    <div class="alert @_messageClass">@_message</div>
+}
+
+@code {
+    private AccountBalance? _receivable;
+    private AccountBalance? _revenue;
+    private ReconciliationResult? _reconciliation;
+    private List<LedgerEntryDetail> _lookupEntries = [];
+    private string _lookupId = "";
+    private bool _loading;
+    private bool _reconciling;
+    private bool _lookingUp;
+    private bool _lookupDone;
+    private string? _message;
+    private string _messageClass = "alert-info";
+
+    protected override async Task OnInitializedAsync() => await LoadBalances();
+
+    private async Task LoadBalances()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _receivable = await Client.GetAccountBalanceAsync("CustomerReceivable");
+            _revenue = await Client.GetAccountBalanceAsync("Revenue");
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error loading balances: {ex.Message}";
+            _messageClass = "alert-danger";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RunReconciliation()
+    {
+        _reconciling = true;
+        StateHasChanged();
+
+        try
+        {
+            _reconciliation = await Client.RunReconciliationAsync();
+            _message = _reconciliation?.IsBalanced == true
+                ? "✓ Ledger is balanced. All debits equal all credits."
+                : "⚠ Ledger imbalance detected! Review entries.";
+            _messageClass = _reconciliation?.IsBalanced == true ? "alert-success" : "alert-danger";
+        }
+        catch (Exception ex)
+        {
+            _message = $"Error: {ex.Message}";
+            _messageClass = "alert-danger";
+        }
+        finally
+        {
+            _reconciling = false;
+        }
+    }
+
+    private async Task LookupLedger()
+    {
+        if (!Guid.TryParse(_lookupId, out var id)) return;
+
+        _lookingUp = true;
+        _lookupDone = false;
+        StateHasChanged();
+
+        try
+        {
+            _lookupEntries = await Client.GetLedgerEntriesAsync(id);
+            _lookupDone = true;
+        }
+        catch (Exception ex)
+        {
+            _message = $"Lookup error: {ex.Message}";
+            _messageClass = "alert-danger";
+        }
+        finally
+        {
+            _lookingUp = false;
+        }
+    }
+}

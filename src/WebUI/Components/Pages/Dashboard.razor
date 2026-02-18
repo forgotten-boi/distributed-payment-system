@@ -1,0 +1,102 @@
+@page "/"
+@inject OrderTracker Tracker
+
+<div class="page-header">
+    <h1>📊 Dashboard</h1>
+    <p>Enterprise Distributed Payments Platform — real-time system overview</p>
+</div>
+
+@{
+    var orders = Tracker.GetAll();
+    var totalOrders = orders.Count;
+    var captured = orders.Count(o => o.Status == "Captured");
+    var authorized = orders.Count(o => o.Status == "Authorized");
+    var failed = orders.Count(o => o.Status == "Failed");
+    var totalVolume = orders.Where(o => o.Status == "Captured").Sum(o => o.Amount);
+}
+
+<div class="stats-grid">
+    <div class="stat-card stat-blue">
+        <div class="stat-value">@totalOrders</div>
+        <div class="stat-label">Total Orders</div>
+    </div>
+    <div class="stat-card stat-green">
+        <div class="stat-value">@captured</div>
+        <div class="stat-label">Captured</div>
+    </div>
+    <div class="stat-card stat-amber">
+        <div class="stat-value">@authorized</div>
+        <div class="stat-label">Authorized</div>
+    </div>
+    <div class="stat-card stat-red">
+        <div class="stat-value">@failed</div>
+        <div class="stat-label">Failed</div>
+    </div>
+    <div class="stat-card stat-purple">
+        <div class="stat-value">@totalVolume.ToString("C")</div>
+        <div class="stat-label">Captured Volume</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Payment Lifecycle Flow</h3>
+    </div>
+    <div class="alert alert-info">
+        <strong>Architecture:</strong> Orders → (RabbitMQ) → Payments → (RabbitMQ) → Accounting.
+        All services communicate via asynchronous messaging. No direct database queries across services.
+    </div>
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; align-items: center;">
+        <span class="badge badge-created">Create Order</span>
+        <span class="text-muted">→</span>
+        <span class="badge badge-authorizing">Authorize Payment</span>
+        <span class="text-muted">→</span>
+        <span class="badge badge-authorized">Authorized</span>
+        <span class="text-muted">→</span>
+        <span class="badge badge-capturing">Capture</span>
+        <span class="text-muted">→</span>
+        <span class="badge badge-captured">Captured</span>
+        <span class="text-muted">→</span>
+        <span class="badge badge-settled">Ledger Entry</span>
+    </div>
+</div>
+
+@if (orders.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Orders</h3>
+            <a href="/orders" class="btn btn-secondary btn-sm">View All</a>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in orders.Take(5))
+                {
+                    <tr>
+                        <td><a href="/orders/@order.OrderId" class="nav-link" style="padding:0; display:inline;">@order.OrderId.ToString()[..8]…</a></td>
+                        <td>@order.Amount.ToString("C") @order.Currency</td>
+                        <td><span class="badge badge-@order.Status.ToLowerInvariant()">@order.Status</span></td>
+                        <td class="text-secondary">@order.CreatedAt.ToString("HH:mm:ss")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="alert alert-info">
+            No orders yet. <a href="/orders/create">Create your first order</a> or run the
+            <a href="/lifecycle">Full Lifecycle Demo</a> to see the system in action.
+        </div>
+    </div>
+}
