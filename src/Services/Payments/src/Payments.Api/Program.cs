@@ -2,7 +2,6 @@ using BuildingBlocks.Messaging;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Persistence;
 using MassTransit;
-using Microsoft.EntityFrameworkCore;
 using Payments.Application.CommandHandlers;
 using Payments.Domain.Gateways;
 using Payments.Domain.Repositories;
@@ -14,9 +13,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Observability
 builder.AddObservability("Payments");
 
-// Database
-builder.Services.AddDbContext<PaymentsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PaymentsDb")));
+// Database — provider (PostgreSQL / SqlServer) is resolved from "Database:Provider" in config.
+// Connection string is resolved from "ConnectionStrings:PaymentsDb".
+// When running via Aspire the AppHost injects both values automatically.
+builder.Services.AddServiceDatabase<PaymentsDbContext>(builder.Configuration, "PaymentsDb");
 
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PaymentsDbContext>());
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();

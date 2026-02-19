@@ -6,16 +6,16 @@ using BuildingBlocks.Messaging;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Persistence;
 using MassTransit;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Observability
 builder.AddObservability("Accounting");
 
-// Database
-builder.Services.AddDbContext<AccountingDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("AccountingDb")));
+// Database — provider (PostgreSQL / SqlServer) is resolved from "Database:Provider" in config.
+// Connection string is resolved from "ConnectionStrings:AccountingDb".
+// When running via Aspire the AppHost injects both values automatically.
+builder.Services.AddServiceDatabase<AccountingDbContext>(builder.Configuration, "AccountingDb");
 
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AccountingDbContext>());
 builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();

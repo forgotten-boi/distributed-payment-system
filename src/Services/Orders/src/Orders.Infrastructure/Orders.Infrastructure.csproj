@@ -3,7 +3,8 @@
     <RootNamespace>Orders.Infrastructure</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!-- Design-time tools for 'dotnet ef migrations add/update'. Provider packages
+         (Npgsql + SqlServer) come transitively from BuildingBlocks.Persistence. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
   </ItemGroup>
   <ItemGroup>
