@@ -3,7 +3,6 @@ using BuildingBlocks.Observability;
 using BuildingBlocks.Persistence;
 using MassTransit;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using Orders.Application.Commands;
 using Orders.Application.EventHandlers;
 using Orders.Application.Queries;
@@ -15,9 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Observability
 builder.AddObservability("Orders");
 
-// Database
-builder.Services.AddDbContext<OrdersDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("OrdersDb")));
+// Database — provider (PostgreSQL / SqlServer) is resolved from "Database:Provider" in config.
+// Connection string is resolved from "ConnectionStrings:OrdersDb".
+// When running via Aspire the AppHost injects both values automatically.
+builder.Services.AddServiceDatabase<OrdersDbContext>(builder.Configuration, "OrdersDb");
 
 builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<OrdersDbContext>());
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
