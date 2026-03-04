@@ -7,10 +7,19 @@
          (Npgsql + SqlServer) come transitively from BuildingBlocks.Persistence. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Polly.Core" />
+    <PackageReference Include="Adyen"  />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Payments.Domain\Payments.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Persistence\BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Exceptions\BuildingBlocks.Exceptions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Adyen">
+      <HintPath>..\..\..\..\..\..\..\..\Users\pjha\.nuget\packages\adyen\34.0.0\lib\net8.0\Adyen.dll</HintPath>
+    </Reference>
+    <Reference Include="Stripe.net">
+      <HintPath>..\..\..\..\..\..\..\..\Users\pjha\.nuget\packages\stripe.net\50.4.0\lib\net9.0\Stripe.net.dll</HintPath>
+    </Reference>
   </ItemGroup>
 </Project>

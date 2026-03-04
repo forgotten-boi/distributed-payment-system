@@ -43,7 +43,8 @@ public record GatewayCaptureResult(
 
 public record GatewayRefundRequest(
     string TransactionId,
-    decimal Amount);
+    decimal Amount,
+    string Currency = "GBP");
 
 public record GatewayRefundResult(
     bool Success,

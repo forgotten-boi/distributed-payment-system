@@ -1,85 +1,117 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Stripe;
 using Payments.Domain.Gateways;
 
 namespace Payments.Infrastructure.Gateways;
+
 public class StripePaymentGateway : IPaymentGateway
 {
-    private readonly ILogger<StripePaymentGateway> logger;
+    private readonly ILogger<StripePaymentGateway> _logger;
+    private readonly string _webhookSecret;
 
-    public StripePaymentGateway(ILogger<StripePaymentGateway> logger)
+    public StripePaymentGateway(ILogger<StripePaymentGateway> logger, IConfiguration config)
     {
-        this.logger = logger;
+        _logger = logger;
+        // Initialize the Stripe API Key (usually starts with sk_test_ or sk_live_)
+        StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
+        _webhookSecret = config["Stripe:WebhookSecret"] ?? string.Empty;
     }
 
     public async Task<GatewayAuthorizationResult> AuthorizeAsync(
         GatewayAuthorizationRequest request, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation(
-            "[Stripe] Authorizing {Amount} {Currency} with idempotency key {IdempotencyKey}",
-            request.Amount, request.Currency, request.IdempotencyKey);
-
-        // Simulate network delay
-        await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 300)), cancellationToken);
-
-        // Simulate random failure
-        if (Random.Shared.Next(100) < 10) // 10% failure rate
+        var options = new PaymentIntentCreateOptions
         {
-            logger.LogWarning("[Stripe] Random authorization failure (simulated)");
-            return new GatewayAuthorizationResult(
-                Success: false,
-                TransactionId: null,
-                ErrorCode: "AUTH_FAILED",
-                ErrorMessage: "Simulated random authorization failure");
+            Amount = ToStripeAmount(request.Amount),
+            Currency = request.Currency.ToLower(),
+            CaptureMethod = "manual", // This ensures we only "Authorize"
+            PaymentMethodTypes = new List<string> { "card" }
+        };
+
+        var requestOptions = new RequestOptions { IdempotencyKey = request.IdempotencyKey };
+        var service = new PaymentIntentService();
+
+        try
+        {
+            var intent = await service.CreateAsync(options, requestOptions, cancellationToken);
+            return new GatewayAuthorizationResult(true, intent.Id, null, null);
         }
-        
-        // Simulate successful authorization
-        var transactionId = Guid.NewGuid().ToString();
-        logger.LogInformation("[Stripe] Authorization successful, transaction ID: {TransactionId}", transactionId);
-        return new GatewayAuthorizationResult(
-            Success: true,
-            TransactionId: transactionId,
-            ErrorCode: null,
-            ErrorMessage: null);
+        catch (StripeException e)
+        {
+            _logger.LogError(e, "[Stripe] Auth Failed: {Message}", e.Message);
+            return new GatewayAuthorizationResult(false, null, e.StripeError?.Code, e.Message);
+        }
     }
 
-    public Task<GatewayCaptureResult> CaptureAsync(
+    public async Task<GatewayCaptureResult> CaptureAsync(
         GatewayCaptureRequest request, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation(
-            "[Stripe] Capturing {Amount} for transaction {TransactionId}",
-            request.Amount, request.TransactionId);
+        var options = new PaymentIntentCaptureOptions
+        {
+            AmountToCapture = ToStripeAmount(request.Amount),
+        };
 
-        // Simulate capture logic here (omitted for brevity)
-        return Task.FromResult(new GatewayCaptureResult(
-            Success: true,
-            ErrorCode: null,
-            ErrorMessage: null));
+        var service = new PaymentIntentService();
+
+        try
+        {
+            await service.CaptureAsync(request.TransactionId, options, null, cancellationToken);
+            return new GatewayCaptureResult(true, null, null);
+        }
+        catch (StripeException e)
+        {
+            _logger.LogError(e, "[Stripe] Capture Failed: {Message}", e.Message);
+            return new GatewayCaptureResult(false, e.StripeError?.Code, e.Message);
+        }
     }
 
-    public Task<GatewayRefundResult> RefundAsync(
+    public async Task<GatewayRefundResult> RefundAsync(
         GatewayRefundRequest request, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation(
-            "[Stripe] Refunding {Amount} for transaction {TransactionId}",
-            request.Amount, request.TransactionId);
+        var options = new RefundCreateOptions
+        {
+            PaymentIntent = request.TransactionId,
+            Amount = ToStripeAmount(request.Amount),
+        };
 
-        // Simulate refund logic here (omitted for brevity)
-        return Task.FromResult(new GatewayRefundResult(
-            Success: true,
-            RefundId: Guid.NewGuid().ToString(),
-            ErrorCode: null,
-            ErrorMessage: null));
+        var service = new RefundService();
+
+        try
+        {
+            var refund = await service.CreateAsync(options, null, cancellationToken);
+            return new GatewayRefundResult(true, refund.Id, null, null);
+        }
+        catch (StripeException e)
+        {
+            _logger.LogError(e, "[Stripe] Refund Failed: {Message}", e.Message);
+            return new GatewayRefundResult(false, null, e.StripeError?.Code, e.Message);
+        }
     }
 
-    public Task<GatewayWebhookResult> HandleWebhookAsync(
+    public async Task<GatewayWebhookResult> HandleWebhookAsync(
         string payload, string signature, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("[Stripe] Handling webhook with payload: {Payload}", payload);
+        try
+        {
+            var stripeEvent = EventUtility.ConstructEvent(payload, signature, _webhookSecret);
+            string transactionId = string.Empty;
+            var metadata = new Dictionary<string, string>();
 
-        // Simulate webhook handling logic here (omitted for brevity)
-        return Task.FromResult(new GatewayWebhookResult(
-            EventType: "payment_intent.succeeded",
-            TransactionId: Guid.NewGuid().ToString(),
-            Metadata: new Dictionary<string, string> { { "example_key", "example_value" } }));
+            if (stripeEvent.Data.Object is PaymentIntent intent)
+            {
+                transactionId = intent.Id;
+                metadata = intent.Metadata ?? new Dictionary<string, string>();
+            }
+
+            return new GatewayWebhookResult(stripeEvent.Type, transactionId, metadata);
+        }
+        catch (StripeException e)
+        {
+            _logger.LogCritical(e, "[Stripe] Webhook signature validation failed");
+            throw;
+        }
     }
+
+    private static long ToStripeAmount(decimal amount) => (long)(amount * 100);
 }
