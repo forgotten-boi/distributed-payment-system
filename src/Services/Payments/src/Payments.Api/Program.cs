@@ -22,7 +22,37 @@ builder.Services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<PaymentsDbCo
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 // Payment Gateway — simulated in development, real adapter in production
-builder.Services.AddScoped<IPaymentGateway, SimulatedPaymentGateway>();
+// builder.Services.AddScoped<IPaymentGateway, SimulatedPaymentGateway>();
+
+var paymentSettings = builder.Configuration.GetSection("PaymentSettings");
+if(paymentSettings.Exists() && (paymentSettings.GetSection("PaymentGateways:Provider").Value == "Stripe")
+                            && paymentSettings.GetSection("PaymentGateway:Stripe").Exists())
+{
+    var stripeSettings = paymentSettings.GetSection("PaymentGateway:Stripe");
+    if (!string.IsNullOrEmpty(stripeSettings["ApiKey"]))
+    {
+        builder.Services.AddScoped<IPaymentGateway, StripePaymentGateway>();
+    }
+}
+else if(paymentSettings.Exists() && (paymentSettings.GetSection("PaymentGateways:Provider").Value == "Adyen")
+                            && paymentSettings.GetSection("PaymentGateway:Adyen").Exists())
+{
+    var adyenSettings = paymentSettings.GetSection("PaymentGateway:Adyen");
+    if (!string.IsNullOrEmpty(adyenSettings["ApiKey"]))
+    {
+        builder.Services.AddScoped<IPaymentGateway, AdyenPaymentGateway>();
+    }
+}
+else if (builder.Environment.IsProduction())
+{
+    // In production, we expect a real provider to be configured. If not, throw an exception
+    throw new InvalidOperationException("No payment gateway configured. Please set up a real provider for production.");
+}
+else
+{
+    builder.Services.AddScoped<IPaymentGateway, SimulatedPaymentGateway>();
+}
+
 
 // MassTransit + RabbitMQ
 builder.Services.AddMassTransit(x =>

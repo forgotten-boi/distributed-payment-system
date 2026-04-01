@@ -5,6 +5,8 @@
   <ItemGroup>
     <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="Polly.Core" />
+    <PackageReference Include="Stripe.net" />
+    <PackageReference Include="Adyen" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Payments.Application\Payments.Application.csproj" />
