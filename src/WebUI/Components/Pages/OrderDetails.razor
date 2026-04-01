@@ -122,6 +122,38 @@ else if (_order is not null)
     {
         <div class="alert @_actionClass">@_actionMessage</div>
     }
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Saga State</h3>
+            <button class="btn btn-secondary btn-sm" @onclick="LoadSagaState">Load Saga State</button>
+        </div>
+
+        @if (_sagaState is not null)
+        {
+            <dl class="detail-grid">
+                <dt>Saga State</dt>
+                <dd><span class="badge badge-@_sagaState.CurrentState.ToLowerInvariant()">@_sagaState.CurrentState</span></dd>
+                <dt>Payment ID</dt>
+                <dd class="mono">@(_sagaState.PaymentId?.ToString() ?? "Not assigned")</dd>
+                <dt>Provider Txn</dt>
+                <dd class="mono">@(_sagaState.ProviderTransactionId ?? "N/A")</dd>
+                <dt>Saga Created</dt>
+                <dd>@_sagaState.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                <dt>Last Updated</dt>
+                <dd>@_sagaState.UpdatedAt.ToString("yyyy-MM-dd HH:mm:ss")</dd>
+                @if (_sagaState.FailureReason is not null)
+                {
+                    <dt>Failure Reason</dt>
+                    <dd style="color: var(--accent-red);">@_sagaState.FailureReason</dd>
+                }
+            </dl>
+        }
+        else
+        {
+            <p class="text-secondary" style="padding: 0.5rem;">Click "Load Saga State" to view the orchestration state.</p>
+        }
+    </div>
 }
 
 @code {
@@ -129,6 +161,7 @@ else if (_order is not null)
 
     private OrderDetail? _order;
     private PaymentDetail? _payment;
+    private SagaStateDetail? _sagaState;
     private List<LedgerEntryDetail> _ledgerEntries = [];
     private bool _loading = true;
     private bool _refreshing;
@@ -236,5 +269,23 @@ else if (_order is not null)
             _actionClass = "alert-danger";
         }
         finally { _acting = false; }
+    }
+
+    private async Task LoadSagaState()
+    {
+        try
+        {
+            _sagaState = await Client.GetSagaStateAsync(OrderId);
+            if (_sagaState is null)
+            {
+                _actionMessage = "No saga state found for this order.";
+                _actionClass = "alert-info";
+            }
+        }
+        catch (Exception ex)
+        {
+            _actionMessage = $"Failed to load saga state: {ex.Message}";
+            _actionClass = "alert-danger";
+        }
     }
 }

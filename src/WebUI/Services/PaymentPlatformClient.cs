@@ -81,4 +81,19 @@ public sealed class PaymentPlatformClient(
         var response = await accountingClient.PostAsync("/api/reconciliation/run", null, ct);
         return await response.Content.ReadFromJsonAsync<ReconciliationResult>(ct);
     }
+
+    // ── Saga State ──
+
+    public async Task<SagaStateDetail?> GetSagaStateAsync(Guid orderId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await ordersClient.GetFromJsonAsync<SagaStateDetail>(
+                $"/api/orders/{orderId}/saga-state", ct);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 }

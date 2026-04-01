@@ -27,6 +27,7 @@ var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true
 
 Console.WriteLine("═══════════════════════════════════════════════════════════");
 Console.WriteLine("  Enterprise Distributed Payments Platform — Test Client  ");
+Console.WriteLine("  Saga Orchestration Pattern (MassTransit StateMachine)   ");
 Console.WriteLine("═══════════════════════════════════════════════════════════");
 Console.WriteLine($"  Correlation ID: {correlationId}");
 Console.WriteLine($"  Orders:     {ordersBaseUrl}");
@@ -152,8 +153,33 @@ try
     Console.WriteLine($"   Difference:    {reconResult?.Difference:C}");
     Console.WriteLine();
 
+    // ─── Step 7: Check Saga State ───
+    Console.WriteLine("── Step 7: Checking Saga State ──");
+    try
+    {
+        var sagaState = await httpClient.GetFromJsonAsync<SagaState>(
+            $"{ordersBaseUrl}/api/orders/{orderResult.OrderId}/saga-state", jsonOptions);
+        if (sagaState is not null)
+        {
+            Console.WriteLine($"   Saga State:    {sagaState.CurrentState}");
+            Console.WriteLine($"   Payment ID:    {sagaState.PaymentId}");
+            Console.WriteLine($"   Provider Txn:  {sagaState.ProviderTransactionId}");
+            Console.WriteLine($"   Created:       {sagaState.CreatedAt:yyyy-MM-dd HH:mm:ss}");
+            Console.WriteLine($"   Last Updated:  {sagaState.UpdatedAt:yyyy-MM-dd HH:mm:ss}");
+        }
+        else
+        {
+            Console.WriteLine("   ⚠ Saga state not found.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"   ⚠ Could not retrieve saga state: {ex.Message}");
+    }
+    Console.WriteLine();
+
     Console.WriteLine("═══════════════════════════════════════════════════════════");
-    Console.WriteLine("  ✓ Full payment lifecycle completed successfully!        ");
+    Console.WriteLine("  ✓ Full saga-orchestrated payment lifecycle completed!   ");
     Console.WriteLine($"  Trace with Correlation ID: {correlationId}");
     Console.WriteLine("═══════════════════════════════════════════════════════════");
 }
@@ -169,3 +195,5 @@ record OrderDetail(Guid Id, Guid CustomerId, decimal Amount, string Currency,
     string Status, Guid? PaymentId, string? FailureReason);
 record AccountBalance(string Account, decimal TotalDebits, decimal TotalCredits, decimal NetBalance, int EntryCount);
 record ReconciliationResult(bool IsBalanced, decimal TotalDebits, decimal TotalCredits, decimal Difference, int EntryCount);
+record SagaState(Guid CorrelationId, string CurrentState, Guid? PaymentId,
+    string? ProviderTransactionId, string? FailureReason, DateTime CreatedAt, DateTime UpdatedAt);

@@ -9,11 +9,12 @@ using Orders.Domain.Repositories;
 namespace Orders.Application.Commands;
 
 /// <summary>
-/// Cancels an order and sends a cancel command to the Payments service.
-/// Cancellation releases any holds on customer funds.
-/// 
-/// Important: Cannot cancel captured orders — only refund flow applies there.
-/// This is enforced at the domain level by the Order aggregate.
+/// Cancels an order by publishing CancelOrderRequested to the saga.
+///
+/// The saga state machine receives this message, determines if a payment
+/// hold needs to be released, and sends CancelPaymentCommand if needed.
+///
+/// Cannot cancel captured orders — enforced at the domain level.
 /// </summary>
 public class CancelOrderCommandHandler(
     IOrderRepository orderRepository,
@@ -31,17 +32,13 @@ public class CancelOrderCommandHandler(
         orderRepository.Update(order);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Order {OrderId} cancelled", order.Id);
+        logger.LogInformation("Order {OrderId} cancelled, publishing to saga", order.Id);
 
-        if (order.PaymentId.HasValue)
-        {
-            await eventBus.SendAsync(new CancelPaymentCommand(
-                PaymentId: order.PaymentId.Value,
-                OrderId: order.Id,
-                IdempotencyKey: $"cancel-{order.Id}",
-                CorrelationId: order.Id.ToString(),
-                CausationId: order.Id.ToString()), cancellationToken);
-        }
+        // Publish to saga — the state machine will send CancelPaymentCommand if needed
+        await eventBus.PublishAsync(new CancelOrderRequested(
+            OrderId: order.Id,
+            CorrelationId: order.Id.ToString(),
+            CausationId: order.Id.ToString()), cancellationToken);
 
         return new CancelOrderResult(order.Id, order.Status.ToString());
     }

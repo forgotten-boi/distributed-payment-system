@@ -184,6 +184,55 @@
 
 ---
 
+## Phase 9: Saga Orchestration Pattern
+
+### 9.1 Saga Contracts
+- [x] Define ConfirmOrderRequested command (API → Saga trigger)
+- [x] Define CancelOrderRequested command (API → Saga trigger)
+- [x] Define OrderSagaStateChanged event (Saga → external observers)
+- [x] Define AuthorizationTimeoutExpired event (Saga scheduled timeout)
+
+### 9.2 Saga State Machine
+- [x] OrderPaymentState entity (MassTransit SagaStateMachineInstance)
+- [x] OrderPaymentStateMachine with full lifecycle:
+  - Initially: OrderCreated → send AuthorizePaymentCommand → Authorizing
+  - Authorizing: PaymentAuthorized → Authorized / PaymentFailed → Failed / Timeout → Failed
+  - Authorized: ConfirmRequested → send CapturePaymentCommand → Capturing / CancelRequested → send CancelPaymentCommand → Cancelled
+  - Capturing: PaymentCaptured → Captured / PaymentFailed → compensate (cancel auth) → Failed
+  - Terminal states: Captured, Failed, Cancelled (ignore further messages)
+- [x] Authorization timeout schedule (5-minute safety net)
+- [x] Capture failure compensation (release authorized hold)
+
+### 9.3 Orders Service Refactoring
+- [x] Simplify CreateOrderCommandHandler (publishes domain event, saga sends authorize command)
+- [x] Simplify ConfirmOrderCommandHandler (publishes ConfirmOrderRequested, saga sends capture command)
+- [x] Simplify CancelOrderCommandHandler (publishes CancelOrderRequested, saga sends cancel command)
+- [x] Remove old choreography-based event handlers (PaymentAuthorized/Captured/FailedEventHandler)
+- [x] Add OrderSagaStateChangedHandler (syncs saga state back to Order aggregate)
+- [x] Add saga state API endpoint (GET /api/orders/{id}/saga-state)
+
+### 9.4 Infrastructure Updates
+- [x] Add OrderPaymentSagaStates table to OrdersDbContext
+- [x] Configure MassTransit EF Core saga persistence (pessimistic concurrency)
+- [x] Wire delayed message scheduler for saga timeouts
+- [x] Update Orders.Api, Orders.Application, Orders.Infrastructure csproj dependencies
+
+### 9.5 UI & Client Updates
+- [x] Add SagaStateDetail model to WebUI
+- [x] Add GetSagaStateAsync to PaymentPlatformClient
+- [x] Update Dashboard to show saga flow visualization
+- [x] Add saga state panel to OrderDetails page
+- [x] Update Lifecycle demo description
+- [x] Update Console Client with saga state check step
+
+### 9.6 Unit Tests
+- [x] Create test project (Orders.Application.Tests)
+- [x] Saga state machine tests (happy path, failure, compensation, timeout, cancellation)
+- [x] Command handler tests (CreateOrder, ConfirmOrder, CancelOrder)
+- [x] Order aggregate domain tests
+
+---
+
 ## Commit Strategy
 
 Every phase/sub-phase gets its own commit with detailed messages explaining:
@@ -206,3 +255,4 @@ Every phase/sub-phase gets its own commit with detailed messages explaining:
 | Double-entry ledger | Financial correctness — every debit has matching credit |
 | Idempotency via ProcessedCommands | Prevents duplicate payment processing |
 | ProblemDetails for errors | RFC 7807 standard error responses |
+| Saga over Choreography | Centralised orchestration for payment lifecycle provides visibility, compensation, timeouts, and debuggability |

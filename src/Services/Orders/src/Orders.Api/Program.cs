@@ -6,6 +6,7 @@ using MediatR;
 using Orders.Application.Commands;
 using Orders.Application.EventHandlers;
 using Orders.Application.Queries;
+using Orders.Application.Saga;
 using Orders.Domain.Repositories;
 using Orders.Infrastructure.Persistence;
 
@@ -25,16 +26,30 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 // MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateOrderCommand>());
 
-// MassTransit + RabbitMQ
+// MassTransit + RabbitMQ + Saga
 builder.Services.AddMassTransit(x =>
 {
-    x.AddConsumer<PaymentAuthorizedEventHandler>();
-    x.AddConsumer<PaymentCapturedEventHandler>();
-    x.AddConsumer<PaymentFailedEventHandler>();
+    // Saga state machine — orchestrates the full payment lifecycle
+    x.AddSagaStateMachine<OrderPaymentStateMachine, OrderPaymentState>()
+        .EntityFrameworkRepository(r =>
+        {
+            r.ConcurrencyMode = ConcurrencyMode.Pessimistic;
+            r.ExistingDbContext<OrdersDbContext>();
+        });
+
+    // Event handler that syncs saga state changes back to the Order aggregate
+    x.AddConsumer<OrderSagaStateChangedHandler>();
+
+    // Use the delayed message scheduler for saga timeouts
+    x.AddDelayedMessageScheduler();
 
     x.UsingRabbitMq((context, cfg) =>
     {
         cfg.Host(builder.Configuration.GetConnectionString("RabbitMq") ?? "rabbitmq://localhost");
+
+        // Enable delayed message scheduler for saga Schedule() calls
+        cfg.UseDelayedMessageScheduler();
+
         cfg.ConfigureEndpoints(context);
     });
 });
@@ -86,6 +101,26 @@ app.MapGet("/api/orders/{id:guid}", async (Guid id, IMediator mediator) =>
 {
     var result = await mediator.Send(new GetOrderQuery(id));
     return result is not null ? Results.Ok(result) : Results.NotFound();
+});
+
+// Saga state endpoint — allows UI/clients to query saga state directly
+app.MapGet("/api/orders/{id:guid}/saga-state", async (Guid id, OrdersDbContext db) =>
+{
+    var state = await db.OrderPaymentSagaStates.FindAsync(id);
+    if (state is null) return Results.NotFound();
+    return Results.Ok(new
+    {
+        state.CorrelationId,
+        state.CurrentState,
+        state.CustomerId,
+        state.Amount,
+        state.Currency,
+        state.PaymentId,
+        state.ProviderTransactionId,
+        state.FailureReason,
+        state.CreatedAt,
+        state.UpdatedAt
+    });
 });
 
 app.Run();

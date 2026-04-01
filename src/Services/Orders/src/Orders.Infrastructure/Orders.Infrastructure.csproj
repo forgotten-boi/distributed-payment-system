@@ -6,9 +6,11 @@
     <!-- Design-time tools for 'dotnet ef migrations add/update'. Provider packages
          (Npgsql + SqlServer) come transitively from BuildingBlocks.Persistence. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orders.Domain\Orders.Domain.csproj" />
+    <ProjectReference Include="..\Orders.Application\Orders.Application.csproj" />
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Persistence\BuildingBlocks.Persistence.csproj" />
   </ItemGroup>
 </Project>
