@@ -47,6 +47,7 @@ Rules:
 ASP.NET Core Web API
 Distributed orchestration (Aspire)
 RabbitMQ messaging
+MassTransit (Saga State Machine, consumers, outbox)
 Entity Framework Core
 PostgreSQL
 Serilog logging
@@ -84,6 +85,8 @@ BuildingBlocks contains all shared packages. No shared code exists between servi
 AuthorizePayment
 CapturePayment
 CancelPayment
+ConfirmOrderRequested (API → Saga)
+CancelOrderRequested (API → Saga)
 
 ## Events
 
@@ -92,8 +95,51 @@ PaymentCaptured
 PaymentFailed
 PaymentSettled
 LedgerEntryCreated
+OrderSagaStateChanged
+AuthorizationTimeoutExpired
 
 Services must treat events as immutable facts.
+
+---
+
+# 5.1 Saga Orchestration Pattern
+
+The system uses a MassTransit `SagaStateMachine` to orchestrate the payment lifecycle.
+
+## Why Saga over Choreography
+
+The original choreography approach had services react to each other's events independently.
+The saga replaces this with a centralized state machine that:
+
+1. Makes the full payment flow visible in one place
+2. Handles compensation on capture failure (releases authorized hold)
+3. Schedules timeouts for stuck authorizations
+4. Publishes state change events for observability
+5. Persists saga state in EF Core alongside order data
+
+## State Machine
+
+```
+  Created ──► Authorizing ──► Authorized ──► Capturing ──► Captured (final)
+                  │                │              │
+                  ▼                ▼              ▼
+               Failed          Cancelled       Failed → (compensate: cancel auth hold)
+```
+
+## Saga State Persistence
+
+The `OrderPaymentState` table in the Orders database stores:
+- CorrelationId (= OrderId)
+- CurrentState
+- PaymentId, ProviderTransactionId
+- FailureReason
+- Timestamps
+
+Pessimistic concurrency prevents race conditions between concurrent messages.
+
+## API
+
+`GET /api/orders/{id}/saga-state` returns the current saga state for any order.
 
 ---
 
@@ -278,13 +324,14 @@ Check logs to trace correlation id across services.
 # 17. Production Readiness Checklist
 
 - Idempotency protection
-- Exactly‑once messaging
+- Exactly-once messaging
 - Financial reconciliation
 - Audit trail
 - Provider failover ready
 - Observability included
 - Domain isolation
 - Eventual consistency
+- Saga orchestration with compensation and timeouts
 
 ---
 

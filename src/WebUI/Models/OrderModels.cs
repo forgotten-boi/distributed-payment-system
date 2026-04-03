@@ -55,3 +55,17 @@ public sealed record ReconciliationResult(
     decimal TotalCredits,
     decimal Difference,
     int EntryCount);
+
+// ── Saga State Model ──
+
+public sealed record SagaStateDetail(
+    Guid CorrelationId,
+    string CurrentState,
+    Guid CustomerId,
+    decimal Amount,
+    string Currency,
+    Guid? PaymentId,
+    string? ProviderTransactionId,
+    string? FailureReason,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);

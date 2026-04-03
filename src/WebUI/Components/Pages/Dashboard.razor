@@ -43,19 +43,20 @@
         <h3>Payment Lifecycle Flow</h3>
     </div>
     <div class="alert alert-info">
-        <strong>Architecture:</strong> Orders → (RabbitMQ) → Payments → (RabbitMQ) → Accounting.
+        <strong>Architecture:</strong> Orders → <em>Saga State Machine</em> → (RabbitMQ) → Payments → (RabbitMQ) → Accounting.
+        The OrderPaymentStateMachine orchestrates the full payment lifecycle as a MassTransit Saga.
         All services communicate via asynchronous messaging. No direct database queries across services.
     </div>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; align-items: center;">
         <span class="badge badge-created">Create Order</span>
         <span class="text-muted">→</span>
-        <span class="badge badge-authorizing">Authorize Payment</span>
+        <span class="badge badge-authorizing">Saga: Authorizing</span>
         <span class="text-muted">→</span>
-        <span class="badge badge-authorized">Authorized</span>
+        <span class="badge badge-authorized">Saga: Authorized</span>
         <span class="text-muted">→</span>
-        <span class="badge badge-capturing">Capture</span>
+        <span class="badge badge-capturing">Saga: Capturing</span>
         <span class="text-muted">→</span>
-        <span class="badge badge-captured">Captured</span>
+        <span class="badge badge-captured">Saga: Captured</span>
         <span class="text-muted">→</span>
         <span class="badge badge-settled">Ledger Entry</span>
     </div>

@@ -42,4 +42,7 @@
     <Project Path="src/Services/Payments/src/Payments.Domain/Payments.Domain.csproj" />
     <Project Path="src/Services/Payments/src/Payments.Infrastructure/Payments.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Orders.Tests/Orders.Tests.csproj" />
+  </Folder>
 </Solution>
